@@ -1,0 +1,62 @@
+# Environment Variables - NEVER COMMIT!
+.env
+.env.local
+.env.*.local
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+*.egg-info/
+dist/
+build/
+
+# API Keys and Secrets
+*.key
+*.pem
+secrets.json
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Output files
+leads.json
+leads_*.json
+*.csv
+
+# Temporary files
+temp/
+tmp/
+*.tmp
+
+# Node modules
+node_modules/
+frontend/node_modules/
+frontend/dist/
+
+# Test files
+test_*.py
+*_test.py
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+

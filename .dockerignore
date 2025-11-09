@@ -1,0 +1,67 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+*.egg-info/
+dist/
+build/
+
+# Environment
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# Documentation (optional)
+*.md
+!README.md
+
+# Frontend (build separately)
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+
+# Output files
+leads.json
+leads_*.json
+leads_*.txt
+*.csv
+
+# Logs
+*.log
+logs/
+
+# Test files
+test_*.py
+*_test.py
+example_usage.py
+api_client_example.py
+
+# Temporary files
+temp/
+tmp/
+*.tmp
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+

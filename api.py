@@ -5,8 +5,9 @@ A FastAPI backend for generating company leads with web scraping enhancement.
 Author: Senior Backend Engineer
 """
 
-from fastapi import FastAPI, HTTPException, BackgroundTasks, Query
+from fastapi import FastAPI, HTTPException, BackgroundTasks, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from pydantic import BaseModel, Field, validator
 from typing import Optional, List, Dict, Any
 import uvicorn
@@ -14,6 +15,18 @@ import os
 from datetime import datetime
 import json
 from enum import Enum
+import logging
+
+# Configure logging for production
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler('logs/app.log') if os.path.exists('logs') else logging.StreamHandler(),
+        logging.StreamHandler()
+    ]
+)
+logger = logging.getLogger(__name__)
 
 from generate_health_insurance import GeminiClient
 from web_scraper import scrape_company_data
@@ -28,13 +41,19 @@ app = FastAPI(
     redoc_url="/redoc"
 )
 
-# Configure CORS
+# Configure CORS for production
+ALLOWED_ORIGINS = os.getenv(
+    "ALLOWED_ORIGINS", 
+    "http://localhost:3000,http://localhost:5173,http://127.0.0.1:3000"
+).split(",")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # In production, specify exact origins
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
+    max_age=600,
 )
 
 # ========== Models ==========
@@ -519,22 +538,61 @@ async def generate_email_content(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# ========== Startup & Shutdown Events ==========
+
+@app.on_event("startup")
+async def startup_event():
+    """Run on API startup"""
+    logger.info("="*60)
+    logger.info("🚀 Lead Generator API Starting...")
+    logger.info("="*60)
+    logger.info(f"Environment: {os.getenv('ENVIRONMENT', 'development')}")
+    logger.info(f"CORS Allowed Origins: {ALLOWED_ORIGINS}")
+    logger.info(f"Gemini API Key: {'✅ Configured' if os.getenv('GEMINI_API_KEY') else '❌ Missing'}")
+    logger.info(f"Email Service: {'✅ Configured' if os.getenv('EMAIL_USER') or os.getenv('SENDGRID_API_KEY') else '⚠️ Not configured'}")
+    logger.info("="*60)
+
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    """Run on API shutdown"""
+    logger.info("🛑 Lead Generator API Shutting Down...")
+
+
 # ========== Run Server ==========
 
 if __name__ == "__main__":
+    import sys
+    
+    # Check if running in production mode
+    is_production = os.getenv('ENVIRONMENT') == 'production'
+    
     print("=" * 60)
     print("🚀 Lead Generator API Starting...")
     print("=" * 60)
-    print(f"📚 API Documentation: http://localhost:8000/docs")
-    print(f"📖 ReDoc Documentation: http://localhost:8000/redoc")
-    print(f"💚 Health Check: http://localhost:8000/health")
-    print("=" * 60)
+    
+    if not is_production:
+        print(f"📚 API Documentation: http://localhost:8000/docs")
+        print(f"📖 ReDoc Documentation: http://localhost:8000/redoc")
+        print(f"💚 Health Check: http://localhost:8000/health")
+        print("=" * 60)
+        print("⚠️  Running in DEVELOPMENT mode")
+        print("   Set ENVIRONMENT=production for production")
+        print("=" * 60)
+    
+    # Check required environment variables
+    if not os.getenv('GEMINI_API_KEY'):
+        print("❌ CRITICAL: GEMINI_API_KEY not set!")
+        print("   Add to .env file or environment variables")
+        sys.exit(1)
     
     uvicorn.run(
         "api:app",
         host="0.0.0.0",
-        port=8000,
-        reload=True,  # Auto-reload on code changes (disable in production)
-        log_level="info"
+        port=int(os.getenv('PORT', 8000)),
+        reload=not is_production,  # Only reload in development
+        log_level="info" if is_production else "debug",
+        access_log=is_production,
+        workers=1  # For development; use multiple workers in Docker
     )
 

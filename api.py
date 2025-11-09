@@ -146,7 +146,10 @@ class HealthCheckResponse(BaseModel):
     gemini_api_configured: bool
 
 
-# ========== In-Memory Storage (For Demo - Use Redis/DB in production) ==========
+# ========== In-Memory Storage ==========
+# NOTE: This is in-memory and won't work with multiple workers (Docker uses 4 workers)
+# For production with async endpoints, use Redis or a database
+# Current frontend uses sync endpoint only for reliability
 job_storage = {}
 
 

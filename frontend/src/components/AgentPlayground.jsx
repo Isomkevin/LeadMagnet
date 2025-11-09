@@ -87,6 +87,7 @@ export default function AgentPlayground({ config, onReset }) {
   const startGeneration = async () => {
     setIsProcessing(true)
     setCurrentStage(0)
+    setError(null)
 
     try {
       // Stage 1: Initialize
@@ -94,63 +95,34 @@ export default function AgentPlayground({ config, onReset }) {
       setCurrentStage(1)
 
       // Stage 2: AI Generation
+      setCurrentStage(2)
+      
+      // Always use sync endpoint for reliability in production
+      // (Async endpoint requires Redis in production with multiple workers)
+      const response = await axios.post('/api/v1/leads/generate', config, {
+        timeout: 300000  // 5 minutes timeout for large requests
+      })
+      
+      // Move through stages
       if (config.enable_web_scraping) {
-        // Use async endpoint for web scraping
-        const response = await axios.post('/api/v1/leads/generate-async', config)
-        setJobId(response.data.job_id)
-        setCurrentStage(2)
-
-        // Poll for results
-        pollJobStatus(response.data.job_id)
-      } else {
-        // Use sync endpoint
-        setCurrentStage(2)
-        const response = await axios.post('/api/v1/leads/generate', config)
-        
-        // Move through stages quickly
-        await new Promise(resolve => setTimeout(resolve, 1500))
-        setCurrentStage(3)
-        
-        await new Promise(resolve => setTimeout(resolve, 500))
-        setCurrentStage(4)
-        
-        setResults(response.data)
-        setIsProcessing(false)
+        await new Promise(resolve => setTimeout(resolve, 1000))
+        setCurrentStage(3)  // Web scraping stage
       }
+      
+      await new Promise(resolve => setTimeout(resolve, 500))
+      setCurrentStage(4)  // Data consolidation
+      
+      setResults(response.data)
+      setIsProcessing(false)
 
     } catch (err) {
-      setError(err.response?.data?.detail || err.message)
+      console.error('Lead generation error:', err)
+      const errorMessage = err.response?.data?.detail || err.message || 'Unknown error occurred'
+      setError(errorMessage)
       setIsProcessing(false)
     }
   }
 
-  const pollJobStatus = async (jobId) => {
-    const pollInterval = setInterval(async () => {
-      try {
-        const response = await axios.get(`/api/v1/leads/status/${jobId}`)
-        const status = response.data.status
-
-        if (status === 'processing' && currentStage < 3) {
-          setCurrentStage(3) // Web scraping stage
-        }
-
-        if (status === 'completed') {
-          clearInterval(pollInterval)
-          setCurrentStage(4)
-          setResults({ data: response.data.result, success: true })
-          setIsProcessing(false)
-        } else if (status === 'failed') {
-          clearInterval(pollInterval)
-          setError(response.data.error)
-          setIsProcessing(false)
-        }
-      } catch (err) {
-        clearInterval(pollInterval)
-        setError('Failed to check job status')
-        setIsProcessing(false)
-      }
-    }, 2000)
-  }
 
   return (
     <div className="h-screen flex flex-col bg-gray-50">
@@ -267,10 +239,56 @@ export default function AgentPlayground({ config, onReset }) {
         <motion.div
           initial={{ opacity: 0, y: 50 }}
           animate={{ opacity: 1, y: 0 }}
-          className="fixed bottom-4 right-4 bg-red-50 border border-red-200 rounded-lg p-4 shadow-lg max-w-md"
+          className="fixed bottom-4 right-4 bg-red-50 border-2 border-red-300 rounded-xl p-6 shadow-2xl max-w-lg z-50"
         >
-          <div className="font-semibold text-red-800">Error</div>
-          <div className="text-sm text-red-600 mt-1">{error}</div>
+          <div className="flex items-start justify-between mb-2">
+            <div className="flex items-center space-x-2">
+              <div className="w-10 h-10 bg-red-500 rounded-full flex items-center justify-center">
+                <X className="w-6 h-6 text-white" />
+              </div>
+              <div className="font-bold text-red-800 text-lg">Error</div>
+            </div>
+            <motion.button
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
+              onClick={() => setError(null)}
+              className="p-1 hover:bg-red-100 rounded-lg"
+            >
+              <X className="w-5 h-5 text-red-600" />
+            </motion.button>
+          </div>
+          
+          <div className="text-sm text-red-700 leading-relaxed mb-4">{error}</div>
+          
+          {error.includes('403') && error.includes('leaked') && (
+            <div className="bg-red-100 border border-red-300 rounded-lg p-3 text-xs">
+              <div className="font-semibold text-red-900 mb-1">🚨 API Key Leaked!</div>
+              <div className="text-red-800">
+                1. Get new key: <a href="https://aistudio.google.com/app/apikey" target="_blank" className="underline">Google AI Studio</a><br/>
+                2. Update .env file with NEW key<br/>
+                3. Restart API server
+              </div>
+            </div>
+          )}
+          
+          <div className="flex items-center space-x-2 mt-4">
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={onReset}
+              className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium transition-colors"
+            >
+              Go Back
+            </motion.button>
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => window.location.reload()}
+              className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg text-sm font-medium transition-colors"
+            >
+              Retry
+            </motion.button>
+          </div>
         </motion.div>
       )}
     </div>

@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion'
-import { 
-  Sparkles, Zap, Globe, Mail, Brain, Target, TrendingUp, 
+import {
+  Sparkles, Zap, Globe, Mail, Brain, Target, TrendingUp,
   Users, Shield, CheckCircle, ArrowRight, Play, Star,
   Linkedin, Twitter, Facebook, Building2, Download, Clock
 } from 'lucide-react'
@@ -149,7 +149,7 @@ export default function LandingPage({ onGetStarted }) {
                 transition={{ delay: 0.2 }}
                 className="text-xl text-gray-600 mb-8 max-w-2xl"
               >
-                Harness the power of AI and web scraping to discover, enrich, and connect with your ideal customers. 
+                Harness the power of AI and web scraping to discover, enrich, and connect with your ideal customers.
                 Get contact emails, social media, and decision maker insights instantly.
               </motion.p>
 
@@ -207,8 +207,8 @@ export default function LandingPage({ onGetStarted }) {
               className="relative"
             >
               <div className="relative rounded-2xl overflow-hidden shadow-2xl border-8 border-white">
-                <img 
-                  src="https://images.unsplash.com/photo-1551434678-e076c223a692?w=800&h=600&fit=crop" 
+                <img
+                  src="https://images.unsplash.com/photo-1551434678-e076c223a692?w=800&h=600&fit=crop"
                   alt="Team collaboration"
                   className="w-full h-auto"
                 />
@@ -283,8 +283,8 @@ export default function LandingPage({ onGetStarted }) {
                 whileHover={{ y: -8 }}
                 className="relative group"
               >
-                <div className="absolute inset-0 bg-gradient-to-r opacity-0 group-hover:opacity-100 transition-opacity blur-xl" 
-                     style={{ background: `linear-gradient(135deg, var(--tw-gradient-stops))` }} 
+                <div className="absolute inset-0 bg-gradient-to-r opacity-0 group-hover:opacity-100 transition-opacity blur-xl"
+                  style={{ background: `linear-gradient(135deg, var(--tw-gradient-stops))` }}
                 />
                 <div className="relative bg-white rounded-2xl p-8 shadow-lg border border-gray-100 group-hover:border-primary-200 transition-all h-full">
                   <div className={`inline-flex w-14 h-14 bg-gradient-to-br ${feature.gradient} rounded-xl items-center justify-center mb-4 shadow-lg`}>
@@ -362,8 +362,8 @@ export default function LandingPage({ onGetStarted }) {
               className="relative"
             >
               <div className="relative rounded-2xl overflow-hidden shadow-2xl">
-                <img 
-                  src="https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=800&h=600&fit=crop" 
+                <img
+                  src="https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=800&h=600&fit=crop"
                   alt="Analytics dashboard"
                   className="w-full h-auto"
                 />

@@ -7,11 +7,6 @@ export default defineConfig({
     port: 3000,
     proxy: {
       '/api': {
-        target: 'https://lead-gen-aes4.onrender.com',  // Local development
-        changeOrigin: true,
-        rewrite: (path) => path
-      },
-      '/health': {
         target: 'https://lead-gen-aes4.onrender.com',
         changeOrigin: true,
       }

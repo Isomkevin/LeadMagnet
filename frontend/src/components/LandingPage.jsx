@@ -2,7 +2,7 @@ import { motion } from 'framer-motion'
 import {
   Sparkles, Zap, Globe, Mail, Brain, Target, TrendingUp,
   Users, Shield, CheckCircle, ArrowRight, Play, Star,
-  Linkedin, Twitter, Facebook, Building2, Download, Clock
+  Linkedin, Twitter, Facebook, Building2, Download, Clock, Phone, MessageCircle
 } from 'lucide-react'
 import { useState } from 'react'
 
@@ -12,8 +12,8 @@ export default function LandingPage({ onGetStarted }) {
   const features = [
     {
       icon: Brain,
-      title: 'AI-Powered Intelligence',
-      description: 'Gemini 2.5 Pro generates comprehensive company data including financials, contacts, and decision makers.',
+      title: 'Agentic Intelligence',
+      description: 'Our AI Agent generates comprehensive company data including financials, contacts, and decision makers.',
       gradient: 'from-purple-500 to-pink-500'
     },
     {
@@ -84,7 +84,7 @@ export default function LandingPage({ onGetStarted }) {
 
   const benefits = [
     'Real-time web scraping for accurate contact data',
-    'AI-powered email suggestions for outreach',
+    'Agentic AI email suggestions for outreach',
     'Complete company intelligence (revenue, size, customers)',
     'Decision maker roles identified automatically',
     'Social media accounts from all platforms',
@@ -127,7 +127,7 @@ export default function LandingPage({ onGetStarted }) {
                 className="inline-flex items-center space-x-2 px-4 py-2 bg-white rounded-full shadow-lg mb-6"
               >
                 <Sparkles className="w-4 h-4 text-primary-600" />
-                <span className="text-sm font-semibold text-gray-900">AI-Powered Lead Generation</span>
+                <span className="text-sm font-semibold text-gray-900">AI Agent Powered Lead Generation</span>
               </motion.div>
 
               <motion.h1
@@ -149,8 +149,12 @@ export default function LandingPage({ onGetStarted }) {
                 transition={{ delay: 0.2 }}
                 className="text-xl text-gray-600 mb-8 max-w-2xl"
               >
-                Harness the power of AI and web scraping to discover, enrich, and connect with your ideal customers.
+                Harness the power of AI Agents to discover, enrich, and connect with your ideal customers.
                 Get contact emails, social media, and decision maker insights instantly.
+
+                <b>ALL FOR FREE</b>
+
+
               </motion.p>
 
               <motion.div
@@ -489,7 +493,7 @@ export default function LandingPage({ onGetStarted }) {
               Ready to Supercharge Your Sales Pipeline?
             </h2>
             <p className="text-xl text-gray-600 mb-8">
-              Join hundreds of businesses generating qualified leads with AI-powered intelligence.
+              Join hundreds of businesses generating qualified leads with AI Agent powered intelligence.
             </p>
 
             <motion.button
@@ -521,7 +525,7 @@ export default function LandingPage({ onGetStarted }) {
                 <span className="text-2xl font-bold">LeadGen AI</span>
               </div>
               <p className="text-gray-400 mb-6 max-w-md">
-                AI-powered lead generation platform helping businesses discover and connect with their ideal customers.
+                AI Agent powered lead generation platform helping businesses discover and connect with their ideal customers.
               </p>
               <div className="flex space-x-4">
                 <a href="#" className="w-10 h-10 bg-gray-800 hover:bg-gray-700 rounded-full flex items-center justify-center transition-colors">
@@ -547,24 +551,86 @@ export default function LandingPage({ onGetStarted }) {
             </div>
 
             <div>
-              <h4 className="font-semibold mb-4">Company</h4>
-              <ul className="space-y-2 text-gray-400">
-                <li><a href="#" className="hover:text-white transition-colors">About</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Blog</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Contact</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Support</a></li>
+              <h4 className="font-semibold mb-4">Contact Us</h4>
+              <ul className="space-y-3 text-gray-400">
+                <li>
+                  <a
+                    href="mailto:danielsamueletukudo@gmail.com"
+                    className="flex items-center space-x-2 hover:text-white transition-colors group"
+                  >
+                    <Mail className="w-4 h-4 group-hover:text-primary-400 transition-colors" />
+                    <span className="text-sm">danielsamueletukudo@gmail.com</span>
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="https://wa.me/254748703778"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center space-x-2 hover:text-white transition-colors group"
+                  >
+                    <MessageCircle className="w-4 h-4 group-hover:text-green-400 transition-colors" />
+                    <span className="text-sm">WhatsApp: +254 748 703 778</span>
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="tel:+254748703778"
+                    className="flex items-center space-x-2 hover:text-white transition-colors group"
+                  >
+                    <Phone className="w-4 h-4 group-hover:text-blue-400 transition-colors" />
+                    <span className="text-sm">Call: +254 748 703 778</span>
+                  </a>
+                </li>
               </ul>
             </div>
           </div>
 
-          <div className="pt-8 border-t border-gray-800 flex flex-col md:flex-row justify-between items-center">
-            <p className="text-gray-400 text-sm">
-              © 2025 LeadGen AI. All rights reserved.
-            </p>
-            <div className="flex space-x-6 mt-4 md:mt-0">
-              <a href="#" className="text-gray-400 hover:text-white text-sm transition-colors">Privacy Policy</a>
-              <a href="#" className="text-gray-400 hover:text-white text-sm transition-colors">Terms of Service</a>
-              <a href="#" className="text-gray-400 hover:text-white text-sm transition-colors">Cookie Policy</a>
+          <div className="pt-8 border-t border-gray-800">
+            {/* Contact Buttons */}
+            <div className="flex flex-col sm:flex-row items-center justify-center space-y-3 sm:space-y-0 sm:space-x-4 mb-6">
+              <motion.a
+                href="mailto:danielsamueletukudo@gmail.com"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800 text-white font-semibold rounded-xl shadow-lg transition-all"
+              >
+                <Mail className="w-5 h-5" />
+                <span>Email Us</span>
+              </motion.a>
+
+              <motion.a
+                href="https://wa.me/254748703778?text=Hi!%20I'm%20interested%20in%20LeadGen%20AI"
+                target="_blank"
+                rel="noopener noreferrer"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white font-semibold rounded-xl shadow-lg transition-all"
+              >
+                <MessageCircle className="w-5 h-5" />
+                <span>WhatsApp</span>
+              </motion.a>
+
+              <motion.a
+                href="tel:+254748703778"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold rounded-xl shadow-lg transition-all"
+              >
+                <Phone className="w-5 h-5" />
+                <span>Call Now</span>
+              </motion.a>
+            </div>
+
+            <div className="flex flex-col md:flex-row justify-between items-center">
+              <p className="text-gray-400 text-sm">
+                © 2025 LeadGen AI. All rights reserved.
+              </p>
+              <div className="flex space-x-6 mt-4 md:mt-0">
+                <a href="#" className="text-gray-400 hover:text-white text-sm transition-colors">Privacy Policy</a>
+                <a href="#" className="text-gray-400 hover:text-white text-sm transition-colors">Terms of Service</a>
+                <a href="#" className="text-gray-400 hover:text-white text-sm transition-colors">Cookie Policy</a>
+              </div>
             </div>
           </div>
         </div>

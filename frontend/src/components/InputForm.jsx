@@ -68,7 +68,7 @@ export default function InputForm({ onStart, onBack }) {
             transition={{ delay: 0.4 }}
             className="text-xl text-gray-600"
           >
-            Generate qualified leads with AI-powered intelligence
+            Generate qualified leads with Agentic AI intelligence
           </motion.p>
         </div>
 

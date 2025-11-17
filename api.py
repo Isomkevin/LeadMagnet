@@ -167,32 +167,79 @@ def validate_api_key():
 
 
 def generate_leads_sync(industry: str, number: int, country: str, enable_scraping: bool = False) -> Dict:
-    """Synchronous lead generation"""
+    """Synchronous lead generation with automatic retry handling"""
     try:
         validate_api_key()
         
-        # Generate leads with AI
+        # Generate leads with AI (includes automatic retry logic for 503 errors)
+        logger.info(f"Starting lead generation: industry={industry}, number={number}, country={country}")
         client = GeminiClient()
         result = client.generate_companies(industry, number, country)
         
         # Enhance with web scraping if enabled
         if enable_scraping:
+            logger.info("Enhancing results with web scraping...")
             result = scrape_company_data(result)
         
+        logger.info(f"Successfully generated {len(result.get('companies', []))} leads")
         return result
         
     except Exception as e:
         error_msg = str(e)
-        # Check if it's a 503/overload error
-        if '503' in error_msg or 'overloaded' in error_msg.lower() or 'unavailable' in error_msg.lower():
-            logger.warning(f"503 error during lead generation: {error_msg}")
+        error_lower = error_msg.lower()
+        
+        # Check if it's a 503/overload error (after retries exhausted)
+        is_503_error = (
+            '503' in error_msg or 
+            'overloaded' in error_lower or 
+            'unavailable' in error_lower or
+            'model is overloaded' in error_lower or
+            'service unavailable' in error_lower
+        )
+        
+        # Check if it's a rate limit error (429)
+        is_rate_limit = (
+            '429' in error_msg or
+            'rate limit' in error_lower or
+            'too many requests' in error_lower
+        )
+        
+        # Check if it's a connection/timeout error
+        is_connection_error = (
+            'connection' in error_lower or
+            'timeout' in error_lower or
+            'network' in error_lower
+        )
+        
+        if is_503_error:
+            logger.error(f"503/Service Unavailable error after retries: {error_msg}")
+            # Provide user-friendly message
+            user_message = (
+                "The AI service is currently overloaded. We've tried multiple times but the service is still unavailable. "
+                "Please try again in a few minutes."
+            )
             raise HTTPException(
                 status_code=503,
-                detail=f"Lead generation failed: {error_msg}"
+                detail=f"Lead generation failed: {user_message} (Error: {error_msg})"
+            )
+        elif is_rate_limit:
+            logger.error(f"Rate limit error: {error_msg}")
+            raise HTTPException(
+                status_code=429,
+                detail="Rate limit exceeded. Please wait a moment before trying again."
+            )
+        elif is_connection_error:
+            logger.error(f"Connection error: {error_msg}")
+            raise HTTPException(
+                status_code=503,
+                detail="Connection error. Please check your internet connection and try again."
             )
         else:
             logger.error(f"Lead generation error: {error_msg}")
-            raise HTTPException(status_code=500, detail=f"Lead generation failed: {error_msg}")
+            raise HTTPException(
+                status_code=500, 
+                detail=f"Lead generation failed: {error_msg}"
+            )
 
 
 async def generate_leads_background(job_id: str, industry: str, number: int, country: str, enable_scraping: bool):

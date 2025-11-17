@@ -1,15 +1,13 @@
-# To run this code you need to install the following dependencies:
-# pip install openai python-dotenv
-
 import os
 import json
 import time
 import logging
-from openai import OpenAI
-from openai import APIError, APIConnectionError, APITimeoutError
+from openai import OpenAI, APIError, APIConnectionError, RateLimitError
 from dotenv import load_dotenv
 
 load_dotenv()
+
+logger = logging.getLogger(__name__)
 
 class GeminiClient:
     def __init__(self):
@@ -18,68 +16,26 @@ class GeminiClient:
         
         self.client = OpenAI(
             api_key=os.getenv('GEMINI_API_KEY'),
-            base_url=base_url,
-            timeout=120.0  # 2 minute timeout
+            base_url=base_url
         )
     
-    def _is_retryable_error(self, exception):
-        """Check if the error is retryable (503, 429, or connection errors)"""
-        if isinstance(exception, APIError):
-            # Check for 503 or 429 status codes
-            if hasattr(exception, 'status_code'):
-                if exception.status_code in [503, 429]:
-                    return True
-            # Check error message for overloaded/unavailable
-            error_msg = str(exception).lower()
-            if 'overloaded' in error_msg or 'unavailable' in error_msg or '503' in error_msg or '429' in error_msg:
-                return True
-        elif isinstance(exception, (APIConnectionError, APITimeoutError)):
-            return True
-        return False
-    
-    def _make_api_call(self, prompt):
-        """Make API call with retry logic"""
-        max_retries = 5
-        attempt = 0
+    def generate_companies(self, industry, number, country, max_retries=5, initial_delay=2):
+        """
+        Generate companies with automatic retry logic for 503 errors.
         
-        while attempt < max_retries:
-            try:
-                response = self.client.chat.completions.create(
-                    model="gemini-2.5-pro",
-                    messages=[
-                        {
-                            "role": "user",
-                            "content": prompt
-                        }
-                    ]
-                )
-                return response
-            except (APIError, APIConnectionError, APITimeoutError) as e:
-                attempt += 1
-                
-                # Check if it's a retryable error
-                if self._is_retryable_error(e):
-                    if attempt < max_retries:
-                        # Calculate exponential backoff: 2^attempt seconds, max 60s
-                        wait_time = min(2 ** attempt, 60)
-                        logging.warning(
-                            f"⚠️ API error (retryable): {str(e)}. "
-                            f"Retrying in {wait_time}s (attempt {attempt}/{max_retries})..."
-                        )
-                        time.sleep(wait_time)
-                        continue
-                    else:
-                        # All retries exhausted
-                        raise Exception(
-                            f"Error code: 503 - The AI model is currently overloaded. "
-                            f"We tried {max_retries} times with automatic retries, but the service is still unavailable. "
-                            f"Please try again in a few minutes."
-                        )
-                else:
-                    # Non-retryable error, raise immediately
-                    raise
-    
-    def generate_companies(self, industry, number, country):
+        Args:
+            industry: Industry to target
+            number: Number of companies to generate
+            country: Country to focus on
+            max_retries: Maximum number of retry attempts (default: 5)
+            initial_delay: Initial delay in seconds before first retry (default: 2)
+        
+        Returns:
+            JSON response with companies data
+        
+        Raises:
+            Exception: If all retries are exhausted
+        """
         prompt = f"""
         You are a professional lead generation expert. Generate a comprehensive list of {number} companies in the {industry} industry that are based in or operate in {country}.
         
@@ -125,24 +81,100 @@ class GeminiClient:
         Remember: Return ONLY the JSON object, no additional text or formatting.
         """
         
-        try:
-            response = self._make_api_call(prompt)
-        except APIError as e:
-            # After all retries failed, provide a user-friendly error message
-            error_msg = str(e)
-            if '503' in error_msg or 'overloaded' in error_msg.lower() or 'unavailable' in error_msg.lower():
-                raise Exception(
-                    f"Error code: 503 - The AI model is currently overloaded. "
-                    f"We tried 5 times with automatic retries, but the service is still unavailable. "
-                    f"Please try again in a few minutes."
+        last_exception = None
+        
+        for attempt in range(max_retries):
+            try:
+                response = self.client.chat.completions.create(
+                    model="gemini-2.5-flash",
+                    messages=[
+                        {
+                            "role": "user",
+                            "content": prompt
+                        }
+                    ]
                 )
-            else:
-                raise Exception(f"API Error: {error_msg}")
-        except (APIConnectionError, APITimeoutError) as e:
-            raise Exception(
-                f"Connection error: Unable to reach the AI service. "
-                f"Please check your internet connection and try again."
-        )
+                
+                # Success - break out of retry loop
+                break
+                
+            except Exception as e:
+                last_exception = e
+                error_str = str(e).lower()
+                
+                # Try to extract status code from various exception attributes
+                error_code = None
+                if hasattr(e, 'status_code'):
+                    error_code = e.status_code
+                elif hasattr(e, 'response') and hasattr(e.response, 'status_code'):
+                    error_code = e.response.status_code
+                elif hasattr(e, 'code'):
+                    error_code = e.code
+                
+                # Check if it's a 503 or overload error
+                is_503_error = (
+                    error_code == 503 or
+                    '503' in str(e) or
+                    'overloaded' in error_str or
+                    'unavailable' in error_str or
+                    'service unavailable' in error_str or
+                    'model is overloaded' in error_str
+                )
+                
+                # Check if it's a rate limit error (429)
+                try:
+                    is_rate_limit_type = isinstance(e, RateLimitError)
+                except (NameError, TypeError):
+                    is_rate_limit_type = False
+                
+                is_rate_limit = (
+                    error_code == 429 or
+                    is_rate_limit_type or
+                    'rate limit' in error_str or
+                    'too many requests' in error_str
+                )
+                
+                # Check if it's a connection error
+                try:
+                    is_connection_error_type = isinstance(e, APIConnectionError)
+                except (NameError, TypeError):
+                    is_connection_error_type = False
+                
+                is_connection_error = (
+                    is_connection_error_type or
+                    'connection' in error_str or
+                    'timeout' in error_str or
+                    'network' in error_str
+                )
+                
+                # Only retry on 503, 429, or connection errors
+                if not (is_503_error or is_rate_limit or is_connection_error):
+                    # Don't retry on other errors
+                    logger.error(f"Non-retryable error: {e}")
+                    raise Exception(f"Error code: {error_code or 'UNKNOWN'} - {str(e)}")
+                
+                # If this is the last attempt, raise the exception
+                if attempt == max_retries - 1:
+                    logger.error(f"All {max_retries} retry attempts exhausted. Last error: {e}")
+                    raise Exception(
+                        f"Error code: {error_code or 'UNKNOWN'} - {str(e)}"
+                    )
+                
+                # Calculate exponential backoff delay
+                delay = initial_delay * (2 ** attempt)
+                # Cap the delay at 60 seconds
+                delay = min(delay, 60)
+                
+                logger.warning(
+                    f"API error (attempt {attempt + 1}/{max_retries}): {e}. "
+                    f"Retrying in {delay} seconds..."
+                )
+                time.sleep(delay)
+        
+        # If we get here, we have a successful response
+        if 'response' not in locals():
+            # This shouldn't happen, but just in case
+            raise Exception(f"Failed to get response after {max_retries} attempts")
         
         response_text = response.choices[0].message.content
         
@@ -190,4 +222,3 @@ if __name__ == '__main__':
     with open('leads.json', 'w') as f:
         json.dump(result, f, indent=2)
     print("\nResults saved to leads.json")
-

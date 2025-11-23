@@ -1,4 +1,4 @@
-# Lead Generator
+# AI Lead Generator
 
 A powerful AI-powered lead generation tool that extracts comprehensive company information including contact details and social media accounts.
 

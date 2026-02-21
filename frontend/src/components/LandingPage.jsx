@@ -6,7 +6,7 @@ import {
 } from 'lucide-react'
 import { useState } from 'react'
 
-export default function LandingPage({ onGetStarted }) {
+export default function LandingPage({ onGetStarted, onLinkedInMessenger, onLinkedInPostSearch }) {
   const [videoPlaying, setVideoPlaying] = useState(false)
 
   const features = [
@@ -251,6 +251,144 @@ export default function LandingPage({ onGetStarted }) {
                   </div>
                 </div>
               </motion.div>
+            </motion.div>
+          </div>
+        </div>
+      </section>
+
+      {/* ===== 3 Tools Section ===== */}
+      <section className="py-24 bg-gradient-to-b from-white to-gray-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-center mb-16"
+          >
+            <div className="inline-flex items-center space-x-2 px-4 py-2 bg-primary-50 rounded-full mb-4">
+              <Zap className="w-4 h-4 text-primary-600" />
+              <span className="text-sm font-semibold text-primary-700">3 Powerful Tools</span>
+            </div>
+            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
+              Choose Your
+              <span className="block bg-gradient-to-r from-primary-600 to-purple-600 bg-clip-text text-transparent">
+                Outreach Weapon
+              </span>
+            </h2>
+            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+              Three specialized tools to dominate your outreach game. Generate leads, message LinkedIn profiles, or engage with posts.
+            </p>
+          </motion.div>
+
+          <div className="grid md:grid-cols-3 gap-8">
+            {/* Tool 1: Lead Generator */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              whileHover={{ y: -8, scale: 1.02 }}
+              className="relative group cursor-pointer"
+              onClick={onGetStarted}
+            >
+              <div className="absolute inset-0 bg-gradient-to-br from-primary-400 to-purple-400 rounded-3xl opacity-0 group-hover:opacity-20 transition-opacity blur-xl" />
+              <div className="relative bg-white rounded-3xl p-8 shadow-xl border-2 border-gray-100 group-hover:border-primary-300 transition-all h-full flex flex-col">
+                <div className="inline-flex w-16 h-16 bg-gradient-to-br from-primary-500 to-purple-600 rounded-2xl items-center justify-center mb-6 shadow-xl">
+                  <Brain className="w-8 h-8 text-white" />
+                </div>
+                <div className="text-xs font-bold text-primary-600 uppercase tracking-wider mb-2">Tool 1</div>
+                <h3 className="text-2xl font-bold text-gray-900 mb-3">AI Lead Generator</h3>
+                <p className="text-gray-600 leading-relaxed mb-6 flex-1">
+                  Generate B2B company leads with AI. Get contact emails, social media profiles, decision makers, and business intelligence. Send bulk emails automatically.
+                </p>
+                <ul className="space-y-2 mb-6 text-sm text-gray-500">
+                  <li className="flex items-center space-x-2"><CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" /><span>AI-powered company discovery</span></li>
+                  <li className="flex items-center space-x-2"><CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" /><span>Web scraping for real contacts</span></li>
+                  <li className="flex items-center space-x-2"><CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" /><span>Built-in email campaigns</span></li>
+                </ul>
+                <motion.div
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="w-full py-3.5 bg-gradient-to-r from-primary-600 to-purple-600 hover:from-primary-700 hover:to-purple-700 text-white font-bold rounded-xl shadow-lg text-center"
+                >
+                  Generate Leads
+                </motion.div>
+              </div>
+            </motion.div>
+
+            {/* Tool 2: LinkedIn People Messenger */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.1 }}
+              whileHover={{ y: -8, scale: 1.02 }}
+              className="relative group cursor-pointer"
+              onClick={onLinkedInMessenger}
+            >
+              <div className="absolute inset-0 bg-gradient-to-br from-blue-400 to-indigo-400 rounded-3xl opacity-0 group-hover:opacity-20 transition-opacity blur-xl" />
+              <div className="relative bg-white rounded-3xl p-8 shadow-xl border-2 border-gray-100 group-hover:border-blue-300 transition-all h-full flex flex-col">
+                <div className="absolute -top-3 -right-3 px-3 py-1 bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-xs font-bold rounded-full shadow-lg">
+                  NEW
+                </div>
+                <div className="inline-flex w-16 h-16 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl items-center justify-center mb-6 shadow-xl">
+                  <Linkedin className="w-8 h-8 text-white" />
+                </div>
+                <div className="text-xs font-bold text-blue-600 uppercase tracking-wider mb-2">Tool 2</div>
+                <h3 className="text-2xl font-bold text-gray-900 mb-3">LinkedIn People Messenger</h3>
+                <p className="text-gray-600 leading-relaxed mb-6 flex-1">
+                  Find people in any niche on LinkedIn - investors, founders, engineers, creators. Automatically send personalized messages with attachments to all of them.
+                </p>
+                <ul className="space-y-2 mb-6 text-sm text-gray-500">
+                  <li className="flex items-center space-x-2"><CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" /><span>Find people by niche/space</span></li>
+                  <li className="flex items-center space-x-2"><CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" /><span>Auto-send personalized DMs</span></li>
+                  <li className="flex items-center space-x-2"><CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" /><span>Attach files to messages</span></li>
+                </ul>
+                <motion.div
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="w-full py-3.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold rounded-xl shadow-lg text-center"
+                >
+                  Find & Message People
+                </motion.div>
+              </div>
+            </motion.div>
+
+            {/* Tool 3: LinkedIn Post Search & Reply */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.2 }}
+              whileHover={{ y: -8, scale: 1.02 }}
+              className="relative group cursor-pointer"
+              onClick={onLinkedInPostSearch}
+            >
+              <div className="absolute inset-0 bg-gradient-to-br from-orange-400 to-amber-400 rounded-3xl opacity-0 group-hover:opacity-20 transition-opacity blur-xl" />
+              <div className="relative bg-white rounded-3xl p-8 shadow-xl border-2 border-gray-100 group-hover:border-orange-300 transition-all h-full flex flex-col">
+                <div className="absolute -top-3 -right-3 px-3 py-1 bg-gradient-to-r from-orange-500 to-amber-500 text-white text-xs font-bold rounded-full shadow-lg">
+                  NEW
+                </div>
+                <div className="inline-flex w-16 h-16 bg-gradient-to-br from-orange-500 to-amber-600 rounded-2xl items-center justify-center mb-6 shadow-xl">
+                  <MessageCircle className="w-8 h-8 text-white" />
+                </div>
+                <div className="text-xs font-bold text-orange-600 uppercase tracking-wider mb-2">Tool 3</div>
+                <h3 className="text-2xl font-bold text-gray-900 mb-3">LinkedIn Post Search & Reply</h3>
+                <p className="text-gray-600 leading-relaxed mb-6 flex-1">
+                  Search for LinkedIn posts about any topic - hiring, ambassadors, partnerships. Automatically message the author AND reply to their post.
+                </p>
+                <ul className="space-y-2 mb-6 text-sm text-gray-500">
+                  <li className="flex items-center space-x-2"><CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" /><span>Search posts by any topic</span></li>
+                  <li className="flex items-center space-x-2"><CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" /><span>Auto-DM post authors</span></li>
+                  <li className="flex items-center space-x-2"><CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" /><span>Auto-reply to posts</span></li>
+                </ul>
+                <motion.div
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="w-full py-3.5 bg-gradient-to-r from-orange-500 to-amber-600 hover:from-orange-600 hover:to-amber-700 text-white font-bold rounded-xl shadow-lg text-center"
+                >
+                  Search & Reply to Posts
+                </motion.div>
+              </div>
             </motion.div>
           </div>
         </div>

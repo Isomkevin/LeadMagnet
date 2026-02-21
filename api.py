@@ -31,6 +31,7 @@ logger = logging.getLogger(__name__)
 from generate_health_insurance import GeminiClient
 from web_scraper import scrape_company_data
 from email_sender import get_email_sender
+from linkedin_bot import LinkedInBot
 
 # Initialize FastAPI app
 app = FastAPI(
@@ -701,6 +702,197 @@ async def generate_email_content(
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ========== LinkedIn Models ==========
+
+class LinkedInCredentials(BaseModel):
+    """LinkedIn login credentials"""
+    linkedin_email: str = Field(..., min_length=3, description="LinkedIn account email")
+    linkedin_password: str = Field(..., min_length=1, description="LinkedIn account password")
+
+
+class LinkedInPeopleRequest(LinkedInCredentials):
+    """Request model for LinkedIn people search & message"""
+    niche: str = Field(
+        ...,
+        min_length=2,
+        max_length=200,
+        description="Niche or space to search (e.g., 'tech investors', 'AI founders')",
+        example="tech investors"
+    )
+    count: int = Field(
+        default=10,
+        ge=1,
+        le=50,
+        description="Number of people to find (1-50)"
+    )
+    message: str = Field(
+        ...,
+        min_length=1,
+        max_length=2000,
+        description="Message to send to found people"
+    )
+
+
+class LinkedInPostSearchRequest(LinkedInCredentials):
+    """Request model for LinkedIn post search"""
+    query: str = Field(
+        ...,
+        min_length=2,
+        max_length=300,
+        description="Search query for posts (e.g., 'hiring developers', 'ambassador program')",
+        example="hiring developers"
+    )
+    count: int = Field(
+        default=10,
+        ge=1,
+        le=50,
+        description="Number of posts to find (1-50)"
+    )
+    message_to_author: str = Field(
+        ...,
+        min_length=1,
+        max_length=2000,
+        description="Message to send to post authors"
+    )
+    reply_to_post: str = Field(
+        ...,
+        min_length=1,
+        max_length=2000,
+        description="Reply/comment to post on the posts"
+    )
+
+
+# ========== LinkedIn Endpoints ==========
+
+@app.post("/api/v1/linkedin/find-people", tags=["LinkedIn"])
+async def linkedin_find_people(request: LinkedInPeopleRequest):
+    """
+    Log in to LinkedIn, search for people in a niche, and send each of them a message.
+
+    Requires LinkedIn email & password. The bot logs in to your account,
+    searches for people matching the niche, and messages each one.
+    """
+    bot = LinkedInBot()
+    try:
+        logger.info(f"LinkedIn people search: niche={request.niche}, count={request.count}")
+
+        login_result = await bot.login(request.linkedin_email, request.linkedin_password)
+        if not login_result["success"]:
+            raise HTTPException(status_code=401, detail=login_result.get("error", "Login failed"))
+
+        result = await bot.find_and_message_people(
+            query=request.niche,
+            message=request.message,
+            count=request.count,
+        )
+
+        if not result["success"]:
+            raise HTTPException(
+                status_code=500,
+                detail=result.get("error", "Failed to find & message people"),
+            )
+
+        return {
+            "success": True,
+            "message": f"Found {result['total_found']} people. Sent: {result['sent']}, Failed: {result['failed']}, Skipped: {result['skipped']}",
+            "people": result["people"],
+            "messaging": {
+                "total_recipients": result["total_found"],
+                "queued": result["sent"],
+                "failed": result["failed"],
+                "results": [
+                    {
+                        "recipient": p.get("full_name", "Unknown"),
+                        "linkedin_url": p.get("linkedin_url", ""),
+                        "status": p.get("message_status", "unknown"),
+                    }
+                    for p in result["people"]
+                ],
+            },
+            "metadata": {
+                "niche": request.niche,
+                "count_requested": request.count,
+                "count_found": result["total_found"],
+                "searched_at": datetime.utcnow().isoformat(),
+            },
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"LinkedIn people search error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"LinkedIn search failed: {str(e)}")
+    finally:
+        await bot.close()
+
+
+@app.post("/api/v1/linkedin/search-posts", tags=["LinkedIn"])
+async def linkedin_search_posts(request: LinkedInPostSearchRequest):
+    """
+    Log in to LinkedIn, search for posts about a topic, reply to each post,
+    and send a direct message to each post author.
+
+    Requires LinkedIn email & password.
+    """
+    bot = LinkedInBot()
+    try:
+        logger.info(f"LinkedIn post search: query={request.query}, count={request.count}")
+
+        login_result = await bot.login(request.linkedin_email, request.linkedin_password)
+        if not login_result["success"]:
+            raise HTTPException(status_code=401, detail=login_result.get("error", "Login failed"))
+
+        result = await bot.find_and_interact_with_posts(
+            query=request.query,
+            message_to_author=request.message_to_author,
+            reply_text=request.reply_to_post,
+            count=request.count,
+        )
+
+        if not result["success"]:
+            raise HTTPException(
+                status_code=500,
+                detail=result.get("error", "Failed to search & interact with posts"),
+            )
+
+        return {
+            "success": True,
+            "message": f"Found {result['total_found']} posts. Replies sent: {result['replies_sent']}, Messages sent: {result['messages_sent']}",
+            "posts": result["posts"],
+            "interactions": {
+                "total_posts": result["total_found"],
+                "messages_queued": result["messages_sent"],
+                "replies_queued": result["replies_sent"],
+                "failed": result["messages_failed"] + result["replies_failed"],
+                "results": [
+                    {
+                        "post_id": p.get("post_id", ""),
+                        "author": p.get("author_name", "Unknown"),
+                        "author_linkedin_url": p.get("author_linkedin_url", ""),
+                        "post_url": p.get("post_url", ""),
+                        "message_status": p.get("message_status", "unknown"),
+                        "reply_status": p.get("reply_status", "unknown"),
+                    }
+                    for p in result["posts"]
+                ],
+            },
+            "metadata": {
+                "query": request.query,
+                "count_requested": request.count,
+                "count_found": result["total_found"],
+                "searched_at": datetime.utcnow().isoformat(),
+            },
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"LinkedIn post search error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"LinkedIn post search failed: {str(e)}")
+    finally:
+        await bot.close()
 
 
 # ========== Startup & Shutdown Events ==========

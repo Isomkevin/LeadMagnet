@@ -559,6 +559,92 @@ async def send_email(request: EmailRequest):
         raise HTTPException(status_code=500, detail="Failed to send email. Please check your email configuration.")
 
 
+class BulkEmailRequest(BaseModel):
+    """Request model for sending bulk emails"""
+    to_emails: List[str] = Field(..., min_length=1, description="List of recipient email addresses")
+    from_email: str = Field(..., description="Sender email address")
+    subject: str = Field(..., min_length=1, description="Email subject")
+    body: str = Field(..., min_length=1, description="Email body (HTML supported)")
+    attachments: Optional[List[EmailAttachment]] = Field(default=None, description="List of attachments")
+
+
+@app.post("/api/v1/email/send-bulk", tags=["Email"])
+async def send_bulk_email(request: BulkEmailRequest):
+    """
+    Send the same email to multiple leads at once.
+
+    Returns per-recipient success/failure details.
+    """
+    import base64
+    import tempfile
+    import os as os_module
+
+    logger.info(f"Bulk email request: from={request.from_email}, recipients={len(request.to_emails)}")
+
+    email_sender = get_email_sender()
+
+    attachment_files = []
+    temp_files = []
+
+    if request.attachments:
+        for attachment in request.attachments:
+            try:
+                file_content = base64.b64decode(attachment.content)
+                temp_file = tempfile.NamedTemporaryFile(
+                    delete=False,
+                    suffix=f"_{attachment.filename}",
+                    mode='wb'
+                )
+                temp_file.write(file_content)
+                temp_file.close()
+                attachment_files.append(temp_file.name)
+                temp_files.append(temp_file.name)
+            except Exception as e:
+                logger.warning(f"Failed to process attachment {attachment.filename}: {e}")
+
+    successful = 0
+    failed = 0
+    failed_details = []
+
+    for to_email in request.to_emails:
+        try:
+            result = email_sender.send_email(
+                from_email=request.from_email,
+                to_email=to_email,
+                subject=request.subject,
+                contents=request.body,
+                attachments=attachment_files if attachment_files else None,
+                cc_email=request.from_email
+            )
+            if isinstance(result, dict) and result.get("success"):
+                successful += 1
+            else:
+                failed += 1
+                failed_details.append({
+                    "email": to_email,
+                    "error": result.get("message", "Unknown error") if isinstance(result, dict) else str(result)
+                })
+        except Exception as e:
+            failed += 1
+            failed_details.append({"email": to_email, "error": str(e)})
+
+    for temp_file in temp_files:
+        try:
+            os_module.unlink(temp_file)
+        except Exception:
+            pass
+
+    return {
+        "success": successful > 0,
+        "total": len(request.to_emails),
+        "successful": successful,
+        "failed": failed,
+        "failed_details": failed_details,
+        "attachments_count": len(attachment_files),
+        "sent_at": datetime.utcnow().isoformat()
+    }
+
+
 @app.post("/api/v1/email/generate-content", tags=["Email"])
 async def generate_email_content(
     company_name: str,

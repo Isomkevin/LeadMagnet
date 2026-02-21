@@ -25,6 +25,7 @@ export const API_ENDPOINTS = {
   generateLeadsAsync: '/api/v1/leads/generate-async',
   jobStatus: (jobId) => `/api/v1/leads/status/${jobId}`,
   sendEmail: '/api/v1/email/send',
+  sendBulkEmail: '/api/v1/email/send-bulk',
   generateEmailContent: '/api/v1/email/generate-content'
 }
 

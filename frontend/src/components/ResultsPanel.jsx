@@ -11,7 +11,7 @@ const socialIcons = {
   youtube: Youtube
 }
 
-export default function ResultsPanel({ results, config, onClose }) {
+export default function ResultsPanel({ results, config, onClose, onEmailAll }) {
   const [selectedCompany, setSelectedCompany] = useState(null)
   const [emailModalCompany, setEmailModalCompany] = useState(null)
   const [showExportMenu, setShowExportMenu] = useState(false)
@@ -138,6 +138,19 @@ export default function ResultsPanel({ results, config, onClose }) {
           </div>
 
           <div className="flex items-center space-x-2">
+
+            {/* Email All Button */}
+            {onEmailAll && companies.filter(c => c.contact_email).length > 0 && (
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={onEmailAll}
+                className="flex items-center space-x-1 sm:space-x-2 px-3 sm:px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors"
+              >
+                <Send className="w-4 h-4" />
+                <span className="hidden sm:inline font-medium">Email All</span>
+              </motion.button>
+            )}
 
             {/* Export Dropdown */}
             <div className="relative" ref={exportMenuRef}>

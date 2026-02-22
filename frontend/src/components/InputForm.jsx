@@ -1,6 +1,8 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { motion } from 'framer-motion'
-import { Sparkles, Building2, Globe, Hash, Zap, ArrowLeft } from 'lucide-react'
+import { Sparkles, Building2, Globe, Hash, Zap, ArrowLeft, Mail, FileText, Paperclip, X } from 'lucide-react'
+import ReactQuill from 'react-quill'
+import 'react-quill/dist/quill.snow.css'
 
 export default function InputForm({ onStart, onBack }) {
   const [inputMode, setInputMode] = useState('industry') // 'industry' or 'website'
@@ -13,18 +15,90 @@ export default function InputForm({ onStart, onBack }) {
     enable_business_intelligence: true
   })
 
+  const [emailData, setEmailData] = useState({
+    from_email: '',
+    subject: '',
+    body: ''
+  })
+
+  const [attachments, setAttachments] = useState([])
+  const fileInputRef = useRef(null)
+
+  const handleFileSelect = async (e) => {
+    const files = Array.from(e.target.files)
+    const MAX_FILE_SIZE = 10 * 1024 * 1024
+
+    for (const file of files) {
+      if (file.size > MAX_FILE_SIZE) {
+        alert(`File ${file.name} is too large. Maximum size is 10MB.`)
+        continue
+      }
+      try {
+        const base64 = await fileToBase64(file)
+        setAttachments(prev => [...prev, {
+          filename: file.name,
+          content: base64.split(',')[1],
+          mimetype: file.type || 'application/octet-stream',
+          size: file.size
+        }])
+      } catch (error) {
+        console.error('Error reading file:', error)
+        alert(`Failed to read file: ${file.name}`)
+      }
+    }
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }
+
+  const fileToBase64 = (file) => new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.readAsDataURL(file)
+    reader.onload = () => resolve(reader.result)
+    reader.onerror = reject
+  })
+
+  const removeAttachment = (index) => {
+    setAttachments(prev => prev.filter((_, i) => i !== index))
+  }
+
+  const formatFileSize = (bytes) => {
+    if (bytes < 1024) return bytes + ' B'
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB'
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB'
+  }
+
   const handleSubmit = (e) => {
     e.preventDefault()
+    const hasEmail = emailData.from_email && emailData.subject && emailData.body
+    const emailCampaign = hasEmail ? {
+      from_email: emailData.from_email,
+      subject: emailData.subject,
+      body: emailData.body,
+      attachments: attachments.length > 0 ? attachments.map(a => ({
+        filename: a.filename,
+        content: a.content,
+        mimetype: a.mimetype
+      })) : null
+    } : null
+
     if (inputMode === 'website' && formData.website_url.trim()) {
-      onStart({ ...formData, mode: 'website' })
+      onStart({ ...formData, mode: 'website', emailCampaign })
     } else if (inputMode === 'industry' && formData.industry.trim()) {
-      onStart({ ...formData, mode: 'industry' })
+      onStart({ ...formData, mode: 'industry', emailCampaign })
     }
+  }
+
+  const quillModules = {
+    toolbar: [
+      [{ 'header': [1, 2, false] }],
+      ['bold', 'italic', 'underline'],
+      [{ 'list': 'ordered' }, { 'list': 'bullet' }],
+      ['link'],
+      ['clean']
+    ],
   }
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 relative">
-      {/* Back button */}
       {onBack && (
         <motion.button
           initial={{ opacity: 0, x: -20 }}
@@ -38,10 +112,9 @@ export default function InputForm({ onStart, onBack }) {
           <span className="font-medium text-gray-700">Back to Home</span>
         </motion.button>
       )}
-      
-      {/* Background decoration */}
+
       <div className="absolute inset-0 grid-pattern opacity-50"></div>
-      
+
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -57,7 +130,7 @@ export default function InputForm({ onStart, onBack }) {
           >
             <Sparkles className="w-10 h-10 text-white" />
           </motion.div>
-          
+
           <motion.h1
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -66,7 +139,7 @@ export default function InputForm({ onStart, onBack }) {
           >
             AI Lead Generator
           </motion.h1>
-          
+
           <motion.p
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -171,7 +244,6 @@ export default function InputForm({ onStart, onBack }) {
                   }
                 }}
                 onBlur={(e) => {
-                  // Ensure valid number on blur
                   if (e.target.value === '' || isNaN(parseInt(e.target.value))) {
                     setFormData({ ...formData, number: 10 })
                   }
@@ -357,6 +429,131 @@ export default function InputForm({ onStart, onBack }) {
               </label>
             </div>
 
+            {/* Divider */}
+            <div className="relative py-2">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-gray-200"></div>
+              </div>
+              <div className="relative flex justify-center">
+                <span className="bg-white px-4 text-sm font-semibold text-primary-600 flex items-center space-x-2">
+                  <Mail className="w-4 h-4" />
+                  <span>Auto-Email Campaign (Optional)</span>
+                </span>
+              </div>
+            </div>
+
+            {/* Email Campaign Section */}
+            <div className="bg-green-50 border border-green-200 rounded-xl p-6 space-y-4">
+              <p className="text-sm text-green-700">
+                Fill in these fields to automatically send your email to every discovered lead.
+                Leave empty to skip auto-sending.
+              </p>
+
+              {/* From Email */}
+              <div>
+                <label className="flex items-center text-sm font-semibold text-gray-700 mb-2">
+                  <Mail className="w-4 h-4 mr-2 text-green-600" />
+                  Your Email
+                </label>
+                <input
+                  type="email"
+                  value={emailData.from_email}
+                  onChange={(e) => setEmailData({ ...emailData, from_email: e.target.value })}
+                  placeholder="your.email@company.com"
+                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-green-500 focus:outline-none transition-colors"
+                />
+              </div>
+
+              {/* Subject */}
+              <div>
+                <label className="flex items-center text-sm font-semibold text-gray-700 mb-2">
+                  <FileText className="w-4 h-4 mr-2 text-green-600" />
+                  Subject
+                </label>
+                <input
+                  type="text"
+                  value={emailData.subject}
+                  onChange={(e) => setEmailData({ ...emailData, subject: e.target.value })}
+                  placeholder="Email subject line..."
+                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-green-500 focus:outline-none transition-colors"
+                />
+              </div>
+
+              {/* Body */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Message</label>
+                <div className="border-2 border-gray-200 rounded-xl overflow-hidden focus-within:border-green-500 bg-white">
+                  <ReactQuill
+                    value={emailData.body}
+                    onChange={(val) => setEmailData({ ...emailData, body: val })}
+                    modules={quillModules}
+                    placeholder="Write your email message here..."
+                    className="h-48"
+                  />
+                </div>
+              </div>
+
+              {/* Attachments */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-sm font-semibold text-gray-700">
+                    Attachments {attachments.length > 0 && `(${attachments.length})`}
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="flex items-center space-x-1.5 px-3 py-1.5 bg-white hover:bg-gray-50 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 transition-colors"
+                  >
+                    <Paperclip className="w-4 h-4" />
+                    <span>Add Files</span>
+                  </button>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    className="hidden"
+                    multiple
+                    onChange={handleFileSelect}
+                    accept="*/*"
+                  />
+                </div>
+
+                {attachments.length === 0 ? (
+                  <div
+                    onClick={() => fileInputRef.current?.click()}
+                    className="border-2 border-dashed border-gray-300 rounded-xl p-4 text-center cursor-pointer hover:border-green-400 hover:bg-green-50/30 transition-colors"
+                  >
+                    <Paperclip className="w-6 h-6 text-gray-400 mx-auto mb-1" />
+                    <p className="text-sm text-gray-500">Click to attach files</p>
+                    <p className="text-xs text-gray-400">Max 10MB per file</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {attachments.map((att, index) => (
+                      <div
+                        key={index}
+                        className="flex items-center justify-between px-3 py-2 bg-white border border-green-200 rounded-lg"
+                      >
+                        <div className="flex items-center space-x-2 flex-1 min-w-0">
+                          <Paperclip className="w-4 h-4 text-green-600 flex-shrink-0" />
+                          <div className="min-w-0">
+                            <div className="text-sm font-medium text-gray-900 truncate">{att.filename}</div>
+                            <div className="text-xs text-gray-500">{formatFileSize(att.size)}</div>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => removeAttachment(index)}
+                          className="p-1 hover:bg-red-100 rounded transition-colors flex-shrink-0"
+                        >
+                          <X className="w-4 h-4 text-red-500" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
             {/* Submit Button */}
             <motion.button
               whileHover={{ scale: 1.02 }}
@@ -364,7 +561,10 @@ export default function InputForm({ onStart, onBack }) {
               type="submit"
               className="w-full py-5 bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800 text-white font-bold text-lg rounded-xl shadow-lg hover:shadow-xl transition-all duration-200"
             >
-              Generate Leads →
+              {emailData.from_email && emailData.subject && emailData.body
+                ? 'Generate Leads & Auto-Send Emails →'
+                : 'Generate Leads →'
+              }
             </motion.button>
           </form>
 
@@ -390,4 +590,3 @@ export default function InputForm({ onStart, onBack }) {
     </div>
   )
 }
-

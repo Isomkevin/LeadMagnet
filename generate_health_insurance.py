@@ -86,7 +86,7 @@ class GeminiClient:
         for attempt in range(max_retries):
             try:
                 response = self.client.chat.completions.create(
-                    model="gemini-2.5-flash",
+                    model="gemini-3-flash-preview",
                     messages=[
                         {
                             "role": "user",

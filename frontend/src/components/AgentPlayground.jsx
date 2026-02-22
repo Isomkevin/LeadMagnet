@@ -1,8 +1,9 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ArrowLeft, Download, FileJson, FileText, Zap, X, PanelRightOpen, PanelRightClose, MessageCircle } from 'lucide-react'
+import { ArrowLeft, Download, FileJson, FileText, Zap, X, PanelRightOpen, PanelRightClose, MessageCircle, Mail, CheckCircle2, AlertCircle, Loader2, Send } from 'lucide-react'
 import ProcessCanvas from './ProcessCanvas'
 import ResultsPanel from './ResultsPanel'
+import BulkEmailPanel from './BulkEmailPanel'
 import FeedbackModal from './FeedbackModal'
 import axios from 'axios'
 import { API_BASE_URL, API_ENDPOINTS } from '../config/api'
@@ -17,16 +18,23 @@ export default function AgentPlayground({ config, onReset }) {
   const [showExportMenu, setShowExportMenu] = useState(false)
   const [showResults, setShowResults] = useState(true)
   const [showFeedback, setShowFeedback] = useState(false)
+  const [showBulkEmail, setShowBulkEmail] = useState(false)
+  const [autoSendStatus, setAutoSendStatus] = useState(null) // null | 'sending' | 'done' | 'error'
+  const [autoSendResult, setAutoSendResult] = useState(null)
+  const autoSendTriggered = useRef(false)
   const exportMenuRef = useRef(null)
   const hasStartedRef = useRef(false)
   const generationKeyRef = useRef(null)
+
+  const hasEmailCampaign = !!config.emailCampaign
 
   const stages = [
     { id: 1, name: 'Initializing', description: 'Preparing AI agent' },
     { id: 2, name: 'AI Generation', description: 'Generating company data' },
     { id: 3, name: 'Web Scraping', description: 'Extracting contact info', skip: !config.enable_web_scraping },
     { id: 4, name: 'Data Consolidation', description: 'Merging results' },
-    { id: 5, name: 'Completed', description: 'Leads ready' }
+    { id: 5, name: hasEmailCampaign ? 'Sending Emails' : 'Completed', description: hasEmailCampaign ? 'Auto-sending to all leads' : 'Leads ready' },
+    ...(hasEmailCampaign ? [{ id: 6, name: 'Completed', description: 'All done' }] : [])
   ]
 
   const activeStages = stages.filter(s => !s.skip)
@@ -146,6 +154,57 @@ export default function AgentPlayground({ config, onReset }) {
     setShowExportMenu(false)
   }
 
+  const collectAllEmails = useCallback((companies) => {
+    const emailSet = new Set()
+    for (const company of companies) {
+      if (company.contact_email) emailSet.add(company.contact_email)
+      if (company.additional_emails) {
+        company.additional_emails.forEach(e => emailSet.add(e))
+      }
+    }
+    return Array.from(emailSet)
+  }, [])
+
+  const autoSendEmails = useCallback(async (responseData) => {
+    if (!config.emailCampaign || autoSendTriggered.current) return
+    autoSendTriggered.current = true
+
+    const companies = responseData?.data?.companies || []
+    const allEmails = collectAllEmails(companies)
+
+    if (allEmails.length === 0) {
+      setAutoSendStatus('done')
+      setAutoSendResult({ successful: 0, failed: 0, total: 0, message: 'No emails found to send to.' })
+      return
+    }
+
+    setAutoSendStatus('sending')
+    setCurrentStage(5)
+
+    try {
+      const payload = {
+        from_email: config.emailCampaign.from_email,
+        to_emails: allEmails,
+        subject: config.emailCampaign.subject,
+        body: config.emailCampaign.body,
+        attachments: config.emailCampaign.attachments
+      }
+
+      const apiUrl = API_BASE_URL + API_ENDPOINTS.sendBulkEmail
+      const response = await axios.post(apiUrl, payload, { timeout: 600000 })
+
+      setAutoSendResult(response.data)
+      setAutoSendStatus('done')
+      if (hasEmailCampaign) setCurrentStage(6)
+    } catch (err) {
+      console.error('Auto-send error:', err)
+      const msg = err.response?.data?.detail || err.message || 'Failed to send emails'
+      setAutoSendResult({ success: false, message: msg, successful: 0, failed: 0 })
+      setAutoSendStatus('error')
+      if (hasEmailCampaign) setCurrentStage(6)
+    }
+  }, [config, collectAllEmails, hasEmailCampaign])
+
   const startGeneration = async () => {
     // Guard: prevent multiple simultaneous generations
     if (isProcessing) {
@@ -166,16 +225,15 @@ export default function AgentPlayground({ config, onReset }) {
     }
 
     try {
-      // Stage 1: Initialize
       await new Promise(resolve => setTimeout(resolve, 1000))
       setCurrentStage(1)
 
-      // Stage 2: AI Generation
       setCurrentStage(2)
 
       // Determine which endpoint to use
       let apiUrl
-      let requestConfig = { ...config }
+      let requestConfig
+      const { emailCampaign, ...leadConfig } = config
       
       if (config.mode === 'website') {
         // Use website-based lead generation
@@ -190,26 +248,32 @@ export default function AgentPlayground({ config, onReset }) {
       } else if (config.enable_business_intelligence) {
         // Use analyze endpoint for BI
         apiUrl = API_BASE_URL + API_ENDPOINTS.analyzeLeads
+        requestConfig = leadConfig
       } else {
         // Use regular generate endpoint
         apiUrl = API_BASE_URL + API_ENDPOINTS.generateLeads
+        requestConfig = leadConfig
       }
       
       const response = await axios.post(apiUrl, requestConfig, {
         timeout: 600000  // 10 minutes timeout for website analysis and BI
       })
 
-      // Move through stages
       if (config.enable_web_scraping) {
         await new Promise(resolve => setTimeout(resolve, 1000))
-        setCurrentStage(3)  // Web scraping stage
+        setCurrentStage(3)
       }
 
       await new Promise(resolve => setTimeout(resolve, 500))
-      setCurrentStage(4)  // Data consolidation
+      setCurrentStage(4)
 
       setResults(response.data)
-      setShowResults(true)  // Auto-open results panel
+      setShowResults(true)
+
+      if (config.emailCampaign) {
+        await autoSendEmails(response.data)
+      }
+
       setIsProcessing(false)
       // Results will be saved automatically by the useEffect above
 
@@ -326,6 +390,25 @@ export default function AgentPlayground({ config, onReset }) {
             </div>
           )}
 
+          {/* Email All Leads Button */}
+          {results && (
+            <motion.button
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => setShowBulkEmail(!showBulkEmail)}
+              className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors ${
+                showBulkEmail
+                  ? 'bg-green-600 text-white hover:bg-green-700'
+                  : 'bg-green-100 text-green-700 hover:bg-green-200'
+              }`}
+            >
+              <Mail className="w-4 h-4" />
+              <span className="hidden sm:inline text-sm font-medium">Email All</span>
+            </motion.button>
+          )}
+
           {/* Toggle Results Panel Button */}
           {results && (
             <motion.button
@@ -370,15 +453,33 @@ export default function AgentPlayground({ config, onReset }) {
 
       {/* Main Content Area */}
       <div className="flex-1 flex overflow-hidden relative">
-        {/* Center Canvas - Full Width */}
-        <div className="flex-1 relative overflow-auto grid-pattern">
-          <ProcessCanvas
-            stages={activeStages}
-            currentStage={currentStage}
-            isProcessing={isProcessing}
-            config={config}
-            results={results}
-          />
+        {/* Center Canvas / Bulk Email */}
+        <div className="flex-1 relative overflow-auto">
+          <AnimatePresence mode="wait">
+            {showBulkEmail && results ? (
+              <BulkEmailPanel
+                key="bulk-email"
+                results={results}
+                onClose={() => setShowBulkEmail(false)}
+              />
+            ) : (
+              <motion.div
+                key="process-canvas"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="h-full grid-pattern"
+              >
+                <ProcessCanvas
+                  stages={activeStages}
+                  currentStage={currentStage}
+                  isProcessing={isProcessing}
+                  config={config}
+                  results={results}
+                />
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
 
         {/* Mobile Backdrop (when results open) */}
@@ -401,10 +502,78 @@ export default function AgentPlayground({ config, onReset }) {
               results={results}
               config={config}
               onClose={() => setShowResults(false)}
+              onEmailAll={() => setShowBulkEmail(true)}
             />
           )}
         </AnimatePresence>
       </div>
+
+      {/* Auto-Send Status Banner */}
+      <AnimatePresence>
+        {autoSendStatus && (
+          <motion.div
+            initial={{ opacity: 0, y: 50 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 50 }}
+            className={`fixed bottom-4 left-1/2 -translate-x-1/2 z-50 rounded-xl p-4 shadow-2xl border max-w-md w-full mx-4 ${
+              autoSendStatus === 'sending'
+                ? 'bg-blue-50 border-blue-300'
+                : autoSendStatus === 'done'
+                ? 'bg-green-50 border-green-300'
+                : 'bg-red-50 border-red-300'
+            }`}
+          >
+            <div className="flex items-center space-x-3">
+              {autoSendStatus === 'sending' && (
+                <>
+                  <Loader2 className="w-5 h-5 text-blue-600 animate-spin flex-shrink-0" />
+                  <div>
+                    <div className="font-semibold text-blue-900">Sending emails to all leads...</div>
+                    <div className="text-sm text-blue-700">This may take a moment</div>
+                  </div>
+                </>
+              )}
+              {autoSendStatus === 'done' && autoSendResult && (
+                <>
+                  <CheckCircle2 className="w-5 h-5 text-green-600 flex-shrink-0" />
+                  <div className="flex-1">
+                    <div className="font-semibold text-green-900">
+                      {autoSendResult.successful > 0
+                        ? `Sent ${autoSendResult.successful} email${autoSendResult.successful !== 1 ? 's' : ''} successfully!`
+                        : autoSendResult.message || 'No emails to send.'
+                      }
+                    </div>
+                    {autoSendResult.failed > 0 && (
+                      <div className="text-sm text-amber-700">{autoSendResult.failed} failed</div>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => setAutoSendStatus(null)}
+                    className="p-1 hover:bg-green-200 rounded-lg"
+                  >
+                    <X className="w-4 h-4 text-green-700" />
+                  </button>
+                </>
+              )}
+              {autoSendStatus === 'error' && autoSendResult && (
+                <>
+                  <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
+                  <div className="flex-1">
+                    <div className="font-semibold text-red-900">Email sending failed</div>
+                    <div className="text-sm text-red-700">{autoSendResult.message}</div>
+                  </div>
+                  <button
+                    onClick={() => setAutoSendStatus(null)}
+                    className="p-1 hover:bg-red-200 rounded-lg"
+                  >
+                    <X className="w-4 h-4 text-red-700" />
+                  </button>
+                </>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Error Display */}
       {error && (
